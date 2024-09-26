@@ -69,19 +69,15 @@ class AlternativeCacheStoresServiceProvider extends ServiceProvider
         $cacheManager->extend(
             $this->redisDriverName,
             function (Application $app, array $cacheConfig) use ($hasLocks, $provider, $cacheManager) {
+                $storeClass = AlternativeRedisCacheStore::class;
                 if ($hasLocks) {
-                    $store = new AlternativeRedisCacheStoreWithLocks(
-                        $app['redis'],
-                        $provider->getPrefix($cacheConfig),
-                        $provider->getConnectionName($cacheConfig)
-                    );
-                } else {
-                    $store = new AlternativeRedisCacheStore(
-                        $app['redis'],
-                        $provider->getPrefix($cacheConfig),
-                        $provider->getConnectionName($cacheConfig)
-                    );
+                    $storeClass = AlternativeRedisCacheStoreWithLocks::class;
                 }
+                $store = resolve($storeClass, [
+                    'db' => $app['redis'],
+                    'prefix' => $provider->getPrefix($cacheConfig),
+                    'connection' => $provider->getConnectionName($cacheConfig)
+                ]);
                 $store->setLogger($app->make('log'));
                 return $cacheManager->repository($store, $cacheConfig);
             }
@@ -100,19 +96,15 @@ class AlternativeCacheStoresServiceProvider extends ServiceProvider
                     $cacheConfig['options'] ?? [],
                     array_filter($cacheConfig['sasl'] ?? [])
                 );
+                $storeClass = AlternativeMemcachedCacheStore::class;
                 if ($hasLocks) {
-                    $store = new AlternativeMemcachedCacheStoreWithLocks(
-                        $memcached,
-                        $provider->getPrefix($cacheConfig),
-                        $provider->getConnectionName($cacheConfig)
-                    );
-                } else {
-                    $store = new AlternativeMemcachedCacheStore(
-                        $memcached,
-                        $provider->getPrefix($cacheConfig),
-                        $provider->getConnectionName($cacheConfig)
-                    );
+                    $storeClass = AlternativeMemcachedCacheStoreWithLocks::class;
                 }
+                $store = resolve($storeClass, [
+                    'db' => $memcached,
+                    'prefix' => $provider->getPrefix($cacheConfig),
+                    'connection' => $provider->getConnectionName($cacheConfig)
+                ]);
                 $store->setLogger($app->make('log'));
                 return $cacheManager->repository($store, $cacheConfig);
             }
@@ -125,12 +117,19 @@ class AlternativeCacheStoresServiceProvider extends ServiceProvider
         $cacheManager->extend(
             $this->fileDriverName,
             function (Application $app, array $cacheConfig) use ($hasLocks, $provider, $cacheManager) {
-                $db = new Filesystem($provider->makeFileCacheAdapter($cacheConfig));
+
+                $db = resolve(Filesystem::class, [
+                    'adapter' => $provider->makeFileCacheAdapter($cacheConfig)
+                ]);
+
+                $storeClass = AlternativeFileCacheStore::class;
                 if ($hasLocks) {
-                    $store = new AlternativeFileCacheStoreWithLocks($db, $provider->getPrefix($cacheConfig));
-                } else {
-                    $store = new AlternativeFileCacheStore($db, $provider->getPrefix($cacheConfig));
+                    $storeClass = AlternativeFileCacheStoreWithLocks::class;
                 }
+                $store = resolve($storeClass, [
+                    'db' => $db,
+                    'prefix' => $provider->getPrefix($cacheConfig),
+                ]);
                 $store->setLogger($app->make('log'));
                 return $cacheManager->repository($store, $cacheConfig);
             }
@@ -143,12 +142,18 @@ class AlternativeCacheStoresServiceProvider extends ServiceProvider
         $cacheManager->extend(
             $this->hierarchialFileDriverName,
             function (Application $app, array $cacheConfig) use ($hasLocks, $provider, $cacheManager) {
-                $db = new Filesystem($provider->makeFileCacheAdapter($cacheConfig));
+                $db = resolve(Filesystem::class, [
+                    'adapter' => $provider->makeFileCacheAdapter($cacheConfig)
+                ]);
+
+                $storeClass = AlternativeHierarchialFileCacheStore::class;
                 if ($hasLocks) {
-                    $store = new AlternativeHierarchialFileCacheStoreWithLocks($db, $provider->getPrefix($cacheConfig));
-                } else {
-                    $store = new AlternativeHierarchialFileCacheStore($db, $provider->getPrefix($cacheConfig));
+                    $storeClass = AlternativeHierarchialFileCacheStoreWithLocks::class;
                 }
+                $store = resolve($storeClass, [
+                    'db' => $db,
+                    'prefix' => $provider->getPrefix($cacheConfig),
+                ]);
                 $store->setLogger($app->make('log'));
                 return $cacheManager->repository($store, $cacheConfig);
             }
